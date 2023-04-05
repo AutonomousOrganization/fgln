@@ -36,7 +36,7 @@ packages:
 # forks / in-progress versions pinned to a git hash. For example:
 #
 extra-deps:
-- clplug-0.3.2.0
+- clplug-0.3.3.0
 
 # extra-deps:
 # - acme-missiles-0.3

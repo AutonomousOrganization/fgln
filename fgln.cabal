@@ -4,9 +4,9 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 
-name:           routes
+name:           fgln
 version:        0.1.0.0
-description:    Please see the README on GitHub at <https://github.com/githubuser/routes#readme>
+description:    Lightning plugin that loads channels into graph object and provides functionality to search channel graph and manage node.
 homepage:       https://github.com/githubuser/routes#readme
 bug-reports:    https://github.com/githubuser/routes/issues
 author:         Author name here
@@ -26,8 +26,11 @@ source-repository head
 library
   exposed-modules:
       Lib
+      Lightning.Graph
+      Lightning.Route
+      Lightning.Search
   other-modules:
-      Paths_routes
+      Paths_fgln
   hs-source-dirs:
       src
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
@@ -43,13 +46,10 @@ library
     , text
   default-language: Haskell2010
 
-executable routes
+executable fgln
   main-is: Main.hs
   other-modules:
-      Graph
-      Route
-      Search
-      Paths_routes
+      Paths_fgln
   hs-source-dirs:
       app
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
@@ -59,10 +59,10 @@ executable routes
     , clplug
     , containers
     , fgl
+    , fgln
     , lens
     , lens-aeson
     , mtl
-    , routes
     , text
   default-language: Haskell2010
 
@@ -70,7 +70,7 @@ test-suite routes-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-      Paths_routes
+      Paths_fgln
   hs-source-dirs:
       test
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
@@ -80,9 +80,9 @@ test-suite routes-test
     , clplug
     , containers
     , fgl
+    , fgln
     , lens
     , lens-aeson
     , mtl
-    , routes
     , text
   default-language: Haskell2010

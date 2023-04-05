@@ -8,7 +8,7 @@
 
     -- , NamedFieldPuns 
     -- , RecordWildCards
-module Route where 
+module Lightning.Route where 
 
 import Data.Lightning 
 import Data.Graph.Inductive.Graph
@@ -25,8 +25,8 @@ import Control.Monad.Reader
 import Control.Monad.State
 import qualified Data.Sequence as Q
 import Data.Sequence (Seq(..),(<|),(|>),(><)) 
-import Search 
-import Graph
+import Lightning.Search 
+import Lightning.Graph
 
 data Route = Route {
       __id :: Text 

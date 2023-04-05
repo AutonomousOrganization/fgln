@@ -5,12 +5,12 @@
 
 packages:
 - completed:
-    hackage: clplug-0.3.2.0@sha256:4163db7d9ead3e0567397c8b0d646258452902038b2d38572fe4b031007b7a71,2230
+    hackage: clplug-0.3.3.0@sha256:74bdf27b21cc202236e0747c63bca1154b8a3be2885684a489fb7c4dae09020d,2230
     pantry-tree:
-      sha256: fff6726556816d18dead5e0f267fe022f586ccadcdad1a828f9f90d235a5cd2a
+      sha256: 0bd1891e5f0c08e953ddcc1a5daf79d53f4e142cddf6afcba17bd5d344257a4d
       size: 909
   original:
-    hackage: clplug-0.3.2.0
+    hackage: clplug-0.3.3.0
 snapshots:
 - completed:
     sha256: b37c0abab16c7de352c45b85f8ecc8530b084209a2c42987a96c92b4a5e3cd65

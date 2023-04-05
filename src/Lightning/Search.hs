@@ -4,14 +4,14 @@
     TypeSynonymInstances, 
     FlexibleInstances
 #-} 
-module Search where 
+module Lightning.Search where 
 
 import Data.Graph.Inductive.Graph
 import Control.Monad.Reader
 import Control.Monad.State
 import qualified Data.Sequence as Q
 import Data.Sequence (Seq(..),(<|),(|>),(><)) 
-import Graph 
+import Lightning.Graph 
 
 type Search = Reader (Gra, Node, Node)  -- from / to
 type Ref = Q.Seq Int

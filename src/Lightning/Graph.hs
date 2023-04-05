@@ -8,7 +8,7 @@
     , ViewPatterns
     #-}
 
-module Graph (Gra, Vertex, Hop, createGraph, getNodeInt) where 
+module Lightning.Graph (Gra, Vertex, Hop, createGraph, getNodeInt) where 
 
 import Control.Plugin (InitMonad) 
 import Control.Client
