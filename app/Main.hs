@@ -25,20 +25,18 @@ import Control.Monad.Reader
 import Control.Applicative (liftA2) 
 import Data.Foldable 
 import qualified Data.Map as M
-
-
+import Data.Text.Format.Numbers
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.Query.Dominators (dom,iDom)
 import qualified Data.Graph.Inductive.Query.BFS as B
-
 import Control.Plugin
 import Data.Lightning 
 import Control.Client
 import Data.Lightning.Generic
-
 import Lightning.Route 
 import Lightning.Search 
 import Lightning.Graph 
+import Lightning.Candidates
 
 main = plugin manifest start app
 
@@ -48,26 +46,35 @@ manifest = object [
     , "rpcmethods" .= [
          RpcMethod "route" "n m [a, l]" "l routes from n to m of a" Nothing False 
        , RpcMethod "network" "" "show metrics of loaded graph" Nothing False 
-       , RpcMethod "robo" "" "" Nothing False
+       , RpcMethod "candidates" "n [l]" "" Nothing False
+       , RpcMethod "deploy" "x" "" Nothing False 
        ]
     ]
 
 start :: InitMonad Gra
 start = createGraph
 
-app (Just i, "robo", _) = do 
-    Just (Res x _) <- lightningCli (Command "getinfo" Nothing params)
-    respond x i 
-    where
-    nfilt = object ["version" .= True]
-    params = object [] 
-        
-
 app (Just i, "candidates", v) = 
-    let n = getNodeInt <$> v ^? nth 0 . _String 
+    let n = maybe 0 id $ getNodeInt <$> v ^? nth 0 . _String 
+        x = maybe 10000000 fromInteger $ v ^? nth 1 . _Integer
     in do 
         g <- get
-        release i        
+        respond (toJSON $ evalState collectD (suggest g n, x, [])) i 
+
+app (Just i, "deploy", v) = 
+    let x = maybe 0 fromInteger $ v ^? nth 0 . _Integer
+    in do 
+        g <- get
+        Just (Res (Object ((parse (.: "id")) -> ((Success nodeid)::Result Text) )) _) <- 
+            lightningCli $ Command "getinfo" Nothing (object []) 
+        let lazyD = suggest g (getNodeInt nodeid)    
+        let dest = evalState collectD (lazyD, x, []) 
+        Just (Res v _) <- lightningCli $ Command "multifundopen" Nothing (object [
+                  "destinations" .= dest
+                , "feerate" .= ("slow" :: Text)
+                , "minchannels" .= (3 * div (length dest) 4)
+                ])
+        respond v i 
 
 app (Just i, "route", v) =
     let n = getNodeInt <$> v ^? nth 0 . _String
@@ -78,7 +85,7 @@ app (Just i, "route", v) =
         g <- get
         case valid g n m of
             Just (n', m') -> do 
-                r <- pure $ evalBy g n' m' $ getXresults x
+                r <- pure $ search g n' m' $ getXresults x
                 respond (object ["routes" .= r ]) i 
             _ -> respond (object ["invalid nodid" .= True]) i 
 
@@ -90,11 +97,13 @@ app (Just i, "network", _) = do
           "nodes" .= order g
         , "edges" .= size g
         , "levels" .= (foldr countl M.empty $ B.level (getNodeInt nodeid) g)
+        , "sats" .= (prettyI (Just ',') $ (`div` 1000) $ ufold total 0 g)
         ]) i 
         where countl :: (Node, Int) -> M.Map Node Int -> M.Map Node Int 
               countl (_, i) m = case M.lookup i m of
                 Just t -> M.adjust (+1) i m 
                 Nothing -> M.insert i 1 m 
+              total ctx t = t + (sum . map (msats.snd) . lsuc' $ ctx) 
 
 app (Just i, _, _) = release i
 app _ = pure () 
@@ -104,7 +113,5 @@ valid g n m = case (n , m) of
                           then (Just (n', m'))
                           else Nothing   
     _ -> Nothing
-
-
 
 

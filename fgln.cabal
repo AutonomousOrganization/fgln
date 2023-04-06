@@ -7,11 +7,8 @@ cabal-version: 1.12
 name:           fgln
 version:        0.1.0.0
 description:    Lightning plugin that loads channels into graph object and provides functionality to search channel graph and manage node.
-homepage:       https://github.com/githubuser/routes#readme
-bug-reports:    https://github.com/githubuser/routes/issues
-author:         Author name here
-maintainer:     example@example.com
-copyright:      2023 Author name here
+homepage:       https://github.com/autonomousorganization/fgln#readme
+bug-reports:    https://github.com/autonomousorganization/fgln/issues
 license:        BSD3
 license-file:   LICENSE
 build-type:     Simple
@@ -21,11 +18,11 @@ extra-source-files:
 
 source-repository head
   type: git
-  location: https://github.com/githubuser/routes
+  location: https://github.com/autonomousorganization/fgln
 
 library
   exposed-modules:
-      Lib
+      Lightning.Candidates
       Lightning.Graph
       Lightning.Route
       Lightning.Search
@@ -40,6 +37,7 @@ library
     , clplug
     , containers
     , fgl
+    , format-numbers
     , lens
     , lens-aeson
     , mtl
@@ -60,6 +58,7 @@ executable fgln
     , containers
     , fgl
     , fgln
+    , format-numbers
     , lens
     , lens-aeson
     , mtl
@@ -81,6 +80,7 @@ test-suite routes-test
     , containers
     , fgl
     , fgln
+    , format-numbers
     , lens
     , lens-aeson
     , mtl

@@ -20,25 +20,27 @@ type Way = Q.Seq Hop
 type Partial = (Ref, Way, Node, Ref) 
 type Complete = (Way, Node, Ref) 
 type Hydrate = Either Partial Complete
+type Collect = (Ref, [Complete]) 
 
-evalBy g n m s = (`runReader` (g, n, m)) .  (`evalStateT` (Empty, [])) $ s 
+search :: Gra -> Node -> Node -> StateT Collect Search [Complete] -> [Complete] 
+search g n m s = (`runReader` (g, n, m)) .  (`evalStateT` (Empty, [])) $ s 
 
 getXresults :: Int -> StateT (Ref, [Complete]) Search [Complete] 
 getXresults x = do 
     (r, c) <- get
-    c'@(_, _, r') <- lift $ search r
+    c'@(_, _, r') <- lift $ loop r
     put (increment.chop $ r', c':c)
     if x > length c
         then getXresults x 
         else return (c':c)
  
-search :: Ref -> Search Complete
-search r = (hydrate r) >>= \case
+loop :: Ref -> Search Complete
+loop r = (hydrate r) >>= \case
     Left x -> do 
-        search $ nextr r x
+        loop $ nextr r x
     Right h -> do
         (fin h) >>= \case  
-            Nothing -> search $ increment r
+            Nothing -> loop $ increment r
             (Just z) -> lift $ pure z   
 
 hydrate :: Ref -> Search Hydrate

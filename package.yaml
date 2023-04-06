@@ -1,10 +1,7 @@
 name:                fgln
 version:             0.1.0.0
-github:              "githubuser/routes"
+github:              "autonomousorganization/fgln"
 license:             BSD3
-author:              "Author name here"
-maintainer:          "example@example.com"
-copyright:           "2023 Author name here"
 
 extra-source-files:
 - README.md
@@ -22,6 +19,7 @@ dependencies:
 - lens-aeson
 - text 
 - mtl
+- format-numbers
 
 ghc-options:
 - -Wall
