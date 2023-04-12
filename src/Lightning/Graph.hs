@@ -8,7 +8,7 @@
     , ViewPatterns
     #-}
 
-module Lightning.Graph (Gra, Cxt, Vertex(..), Hop(..), createGraph, getNodeInt) where 
+module Lightning.Graph (Gra, Cxt, Vertex(..), Hop(..), Fee (..), createGraph, getNodeInt) where 
 
 import Control.Plugin (InitMonad) 
 import Control.Client
@@ -22,6 +22,7 @@ import Data.Text (Text)
 import Control.Applicative (liftA2) 
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.PatriciaTree
+import Fmt
 
 type Gra = Gr Vertex Hop
 type Cxt = Context Vertex Hop
@@ -46,8 +47,8 @@ data Fee = Fee {
     , ppm ::  Int
     } deriving (Show, Eq, Generic) 
 instance FromJSON Fee
-instance ToJSON Fee
-
+instance ToJSON Fee where 
+    toJSON (Fee b p)= toJSON $ ( "(" +| build b +| "," +| build p +| ") " :: Text ) 
 createGraph :: InitMonad Gra
 createGraph = do 
     Just (Res xn _) <- listnodes

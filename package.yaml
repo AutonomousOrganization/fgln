@@ -20,6 +20,7 @@ dependencies:
 - text 
 - mtl
 - format-numbers
+- fmt 
 
 ghc-options:
 - -Wall

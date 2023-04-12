@@ -23,6 +23,7 @@ source-repository head
 library
   exposed-modules:
       Lightning.Candidates
+      Lightning.Fees
       Lightning.Graph
       Lightning.Route
       Lightning.Search
@@ -37,6 +38,7 @@ library
     , clplug
     , containers
     , fgl
+    , fmt
     , format-numbers
     , lens
     , lens-aeson
@@ -58,6 +60,7 @@ executable fgln
     , containers
     , fgl
     , fgln
+    , fmt
     , format-numbers
     , lens
     , lens-aeson
@@ -80,6 +83,7 @@ test-suite routes-test
     , containers
     , fgl
     , fgln
+    , fmt
     , format-numbers
     , lens
     , lens-aeson

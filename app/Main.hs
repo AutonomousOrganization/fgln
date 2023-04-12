@@ -15,6 +15,7 @@ import Data.Char
 import Data.Aeson
 import Data.Aeson.Lens
 import Data.Aeson.Types
+import Data.Aeson.Text 
 import Control.Lens hiding ((.=))
 import Control.Monad.IO.Class
 import Data.Text (Text)
@@ -37,6 +38,8 @@ import Lightning.Route
 import Lightning.Search 
 import Lightning.Graph 
 import Lightning.Candidates
+import Lightning.Fees
+import Fmt
 
 main = plugin manifest start app
 
@@ -91,22 +94,24 @@ app (Just i, "route", v) =
 
 app (Just i, "network", _) = do 
     g <- get
-    -- this is one of those do I really love haskell lines
     Just (Res (Object ( (parse (.: "id")) -> ((Success nodeid)::Result Text) )) _) <- lightningCli $ Command "getinfo" Nothing (object []) 
     respond (object [
           "nodes" .= order g
         , "edges" .= size g
-        , "levels" .= (foldr countl M.empty $ B.level (getNodeInt nodeid) g)
+        , "y-levels" .= (M.map lvlPrint $ foldr (countl g) M.empty $ B.level (getNodeInt nodeid) g)
         , "sats" .= (prettyI (Just ',') $ (`div` 1000) $ ufold total 0 g)
         ]) i 
-        where countl :: (Node, Int) -> M.Map Node Int -> M.Map Node Int 
-              countl (_, i) m = case M.lookup i m of
-                Just t -> M.adjust (+1) i m 
-                Nothing -> M.insert i 1 m 
+        where countl :: Gra -> (Node, Int) -> M.Map Int (Int,[Fee],[Fee]) -> M.Map Int (Int, [Fee], [Fee])  
+              countl g (n, i) m = case M.lookup i m of
+                Just t -> M.adjust (addNode g n) i m 
+                Nothing -> M.insert i (1, [inFee g n], [outFee g n]) m 
               total ctx t = t + (sum . map (msats.snd) . lsuc' $ ctx) 
-
+              addNode g' n' (i', f', f'') = (i'+1, inFee g' n' : f', outFee g' n' : f'')
 app (Just i, _, _) = release i
 app _ = pure () 
+
+lvlPrint :: (Int, [Fee], [Fee]) -> Value
+lvlPrint (i, f', f'') = object ["nodes".=i, "inFee".= (avgFee id f'), "outFee".= (avgFee id f'')]
 
 valid g n m = case (n , m) of 
     (Just n', Just m') -> if gelem n' g && gelem m' g
