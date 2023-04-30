@@ -41,6 +41,8 @@ import Lightning.Candidates
 import Lightning.Fees
 import Fmt
 
+-- prin m = appendFile "/home/o/.ao/storm" $ m <> " \n" 
+
 main = plugin manifest start app
 
 manifest = object [
@@ -52,27 +54,31 @@ manifest = object [
        , RpcMethod "candidates" "n [l]" "" Nothing False
        , RpcMethod "deploy" "x" "" Nothing False 
        ]
+    -- , "subscriptions" .= (["forward_event"] :: [Text] ) 
     ]
 
 start :: InitMonad Gra
 start = createGraph
 
-app (Just i, "candidates", v) = 
-    let n = maybe 0 id $ getNodeInt <$> v ^? nth 0 . _String 
-        x = maybe 10000000 fromInteger $ v ^? nth 1 . _Integer
-    in do 
-        g <- get
-        respond (toJSON $ evalState collectD (suggest g n, x, [])) i 
+--app (Nothing, "forward_event", 
+   -- fromJSON -> Success fe@(ForwardEvent{status = "settled", ..})) = do
+       -- re <- setNewFee fe
+
+app (Just i, "candidates", v) = do 
+    nodeid <- getNodeId
+    let n = getNodeInt $ maybe nodeid id $ v ^? nth 0 . _String 
+    let x = maybe 100000000 fromInteger $ v ^? nth 1 . _Integer
+    g <- get
+    respond (toJSON $ evalState collectD (suggest g n, x, [])) i 
 
 app (Just i, "deploy", v) = 
     let x = maybe 0 fromInteger $ v ^? nth 0 . _Integer
     in do 
         g <- get
-        Just (Res (Object ((parse (.: "id")) -> ((Success nodeid)::Result Text) )) _) <- 
-            lightningCli $ Command "getinfo" Nothing (object []) 
+        nodeid <- getNodeId
         let lazyD = suggest g (getNodeInt nodeid)    
         let dest = evalState collectD (lazyD, x, []) 
-        Just (Res v _) <- lightningCli $ Command "multifundopen" Nothing (object [
+        Just (Res v _) <- lightningCliDebug prin $ Command "multifundchannel" Nothing (object [
                   "destinations" .= dest
                 , "feerate" .= ("slow" :: Text)
                 , "minchannels" .= (3 * div (length dest) 4)
@@ -118,5 +124,11 @@ valid g n m = case (n , m) of
                           then (Just (n', m'))
                           else Nothing   
     _ -> Nothing
+
+
+getNodeId = do 
+    Just (Res (Object ((parse (.: "id")) -> ((Success nodeid)::Result Text) )) _) <- 
+            lightningCli $ Command "getinfo" Nothing (object []) 
+    pure nodeid
 
 

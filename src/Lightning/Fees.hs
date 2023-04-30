@@ -1,9 +1,19 @@
 
 module Lightning.Fees where
 
+import Control.Plugin
 import Lightning.Graph
 import Data.Lightning
 import Data.Graph.Inductive.Graph
+
+
+--setNewFee :: ForwardEvent -> PluginApp a ()
+--setNewFee = do 
+--    undefined
+
+
+
+
 
 inFee :: Gra -> Node -> Fee
 inFee g n = avgFee (fees.snd) $ lpre g n 
