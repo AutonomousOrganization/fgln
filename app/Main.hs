@@ -94,7 +94,10 @@ app (Just i, "route", v) =
         g <- get
         case valid g n m of
             Just (n', m') -> do 
-                r <- pure $ search g n' m' $ getXresults x
+                r <- pure . (`runReader` (g, n', m')) $ do 
+                    xrefs <- search $ getXresults x
+                    ihops <- mapM getHops xrefs
+                    mapM (getRoute 1000000) ihops
                 respond (object ["routes" .= r ]) i 
             _ -> respond (object ["invalid nodid" .= True]) i 
 

@@ -9,6 +9,7 @@ module Lightning.Search where
 import Data.Graph.Inductive.Graph
 import Control.Monad.Reader
 import Control.Monad.State
+import Data.Functor.Identity
 import qualified Data.Sequence as Q
 import Data.Sequence (Seq(..),(<|),(|>),(><)) 
 import Lightning.Graph 
@@ -17,22 +18,23 @@ type Search = Reader (Gra, Node, Node)  -- from / to
 type Ref = Q.Seq Int
 type Way = Q.Seq Hop
 
-type Partial = (Ref, Way, Node, Ref) 
-type Complete = (Way, Node, Ref) 
-type Hydrate = Either Partial Complete
+type Partial = (Ref, Node, Ref) 
+type Complete = Ref 
+type Hydrate = Either Partial (Node, Complete)
 type Collect = (Ref, [Complete]) 
 
-search :: Gra -> Node -> Node -> StateT Collect Search [Complete] -> [Complete] 
-search g n m s = (`runReader` (g, n, m)) .  (`evalStateT` (Empty, [])) $ s 
+search :: StateT Collect Search [Complete] -> Search [Complete] 
+search = (`evalStateT` (Empty, []))  
+
 
 getXresults :: Int -> StateT (Ref, [Complete]) Search [Complete] 
 getXresults x = do 
     (r, c) <- get
-    c'@(_, _, r') <- lift $ loop r
-    put (increment.chop $ r', c':c)
+    r' <- lift $ loop r
+    put (increment.chop $ r', r':c)
     if x > length c
         then getXresults x 
-        else return (c':c)
+        else return (r':c)
  
 loop :: Ref -> Search Complete
 loop r = (hydrate r) >>= \case
@@ -46,28 +48,28 @@ loop r = (hydrate r) >>= \case
 hydrate :: Ref -> Search Hydrate
 hydrate r = do
     (_, n, _) <- ask 
-    evalStateT deref (r, Empty, n, Empty) 
+    evalStateT deref (r, n, Empty) 
     where 
     deref :: StateT Partial Search Hydrate
     deref = get >>= \case 
-        (Empty, w, n', c) -> return $ Right (w, n', c)
-        partial@(y :<| t, w, n', c) -> do 
+        (Empty, n', c) -> return $ Right (n', c)
+        partial@(y :<| t, n', c) -> do 
             oo <- lift $ outgoing n'
             case oo !? y of 
                 Nothing     -> pure $ Left partial 
-                Just (m, w') -> do 
-                    put (t, w |> w', m, c |> y) 
+                Just (m, _) -> do 
+                    put (t, m, c |> y) 
                     deref
 
 nextr :: Ref -> Partial -> Ref 
-nextr r (r', _, _, c)  
+nextr r (r', _, c)  
     | z == Q.length r = extend.increment.chop $ r
     | z == 0          = extendTo (Q.length r + 1) Empty
     | otherwise       = extendTo (Q.length r) $ increment $ Q.take z r
     where z = Q.length c
 
-fin :: Complete -> Search (Maybe Complete) 
-fin (w, n, r)  = do 
+fin :: (Node, Ref) -> Search (Maybe Complete) 
+fin (n, r)  = do 
     (g, _, v) <- ask 
     oo <- outgoing n
     let {
@@ -78,11 +80,11 @@ fin (w, n, r)  = do
         }
     case f of 
         [] -> pure Nothing 
-        ((_, w'):_) -> pure $ Just (w |> w', v, r |> finI) 
+        ((_, w'):_) -> pure . Just $ r |> finI 
 
 outgoing :: Node -> Search [(Node, Hop)] 
 outgoing m = do 
-    (g, n, _) <- ask
+    (g, _, _) <- ask
     pure $ lsuc g m
 
 increment :: Ref -> Ref

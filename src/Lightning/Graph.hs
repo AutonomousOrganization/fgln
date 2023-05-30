@@ -37,6 +37,8 @@ data Hop = Hop {
       short :: Text
     , fees :: Fee
     , msats :: Msat
+    , direction :: Int
+    , delay :: Int
     } deriving (Show, Eq, Generic)
 instance FromJSON Hop where 
     parseJSON = defaultParse 
@@ -77,12 +79,16 @@ createGraph = do
                   , "base_fee_millisatoshi" .= True
                   , "fee_per_millionth" .= True
                   , "amount_msat" .= True
+                  , "direction" .= True
+                  , "delay" .= True
                   ]]]
 
               toHop a = Hop (__short_channel_id a)
                             (liftA2 Fee __base_fee_millisatoshi __fee_per_millionth a) 
                             (__amount_msat a)
-
+                            (__direction a)
+                            (__delay a)
+    
 data Nodes = M {
     _nodes :: [Vertex]  
     } deriving Generic 
@@ -99,7 +105,9 @@ data Chan = Chan {
     , __base_fee_millisatoshi :: Msat
     , __fee_per_millionth :: Int
     , __amount_msat :: Msat 
-    } deriving Generic
+    , __direction :: Int 
+    , __delay :: Int
+        } deriving Generic
 instance FromJSON Chan where 
     parseJSON = defaultParse
               
