@@ -6,6 +6,7 @@
     , BangPatterns
     , ViewPatterns
     , ScopedTypeVariables
+    , FlexibleContexts
     #-}
 
 module Main where 
@@ -19,9 +20,11 @@ import Data.Aeson.Text
 import Control.Lens hiding ((.=))
 import Control.Monad.IO.Class
 import Data.Text (Text)
+import qualified Data.Text as T
 import Data.Lightning 
 import Control.Client 
 import Control.Monad.State
+import GHC.Generics
 import Control.Monad.Reader 
 import Control.Applicative (liftA2) 
 import Data.Foldable 
@@ -29,6 +32,7 @@ import qualified Data.Map as M
 import Data.Text.Format.Numbers
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.Query.Dominators (dom,iDom)
+import Data.Sequence (Seq(..),(<|),(|>),(><)) 
 import qualified Data.Graph.Inductive.Query.BFS as B
 import Control.Plugin
 import Data.Lightning 
@@ -41,7 +45,8 @@ import Lightning.Candidates
 import Lightning.Fees
 import Fmt
 
--- prin m = appendFile "/home/o/.ao/storm" $ m <> " \n" 
+--prin m = appendFile "/home/o/.ao/storm" $ m <> " \n" 
+-- lcli = lightningCliDebug prin
 
 main = plugin manifest start app
 
@@ -53,6 +58,7 @@ manifest = object [
        , RpcMethod "network" "" "show metrics of loaded graph" Nothing False 
        , RpcMethod "candidates" "n [l]" "" Nothing False
        , RpcMethod "deploy" "x" "" Nothing False 
+       , RpcMethod "payer" "x" "" Nothing False 
        ]
     -- , "subscriptions" .= (["forward_event"] :: [Text] ) 
     ]
@@ -97,13 +103,29 @@ app (Just i, "route", v) =
                 r <- pure . (`runReader` (g, n', m')) $ do 
                     xrefs <- search $ getXresults x
                     ihops <- mapM getHops xrefs
-                    mapM (getRoute 1000000) ihops
+                    mapM (getRoute a) ihops
                 respond (object ["routes" .= r ]) i 
             _ -> respond (object ["invalid nodid" .= True]) i 
 
+
+app (Just i, "payer", v) = 
+    let bolt = maybe "" id $ v ^? nth 0 . _String
+    in do 
+        Just (Res (fromJSON -> Success (Decode d a h)) _)
+            <- lightningCli $ Command "decodepay" decodeFilter (object ["bolt11".=bolt])
+        n <- getNodeId
+        g <- get
+        rx <- pure . (`runReader` (g, getNodeInt n, getNodeInt d)) $ do 
+                    xrefs <- search $ getXresults 111
+                    ihops <- mapM getHops xrefs
+                    rou <- mapM (getRoute a) ihops
+                    pure . filter (isCheap a) $ rou
+        r2 <- sendPays h rx []
+        respond (object ["resu" .= r2 ]) i 
+
 app (Just i, "network", _) = do 
     g <- get
-    Just (Res (Object ( (parse (.: "id")) -> ((Success nodeid)::Result Text) )) _) <- lightningCli $ Command "getinfo" Nothing (object []) 
+    nodeid <- getNodeId
     respond (object [
           "nodes" .= order g
         , "edges" .= size g
@@ -129,9 +151,44 @@ valid g n m = case (n , m) of
     _ -> Nothing
 
 
+isCheap a (r :<| _) = 
+    let cost = __amount_msat r - a 
+    in cost < 1000000 
+
+-- sendPays :: _ 
+sendPays _ [] re = pure re
+sendPays h (r:rx) re = do 
+    liftIO $ prin "sendPays go"
+    lightningCliDebug prin $ Command "sendpay" Nothing (object [
+              "route" .= r
+            , "payment_hash" .= h
+            ])
+    Just wsp <- lightningCliDebug prin $ Command "waitsendpay" Nothing (object [
+          "payment_hash" .= h
+        , "timeout" .= (11 :: Int) 
+        ])
+    case wsp of 
+        Res v _ -> pure (v:re)
+        ErrRes g@(T.take 4 -> "fail") _ -> do 
+            liftIO $ prin "view pattern success, should try next?"
+            sendPays h rx ((object ["err".=g]):re)
+        o -> liftIO (prin "did not view pattern") >> pure ((object ["o" .= o]):re) 
+        
+
 getNodeId = do 
     Just (Res (Object ((parse (.: "id")) -> ((Success nodeid)::Result Text) )) _) <- 
             lightningCli $ Command "getinfo" Nothing (object []) 
     pure nodeid
 
 
+decodeFilter = Just $ object [
+      "payee".=True
+    , "amount_msat".=True
+    , "payment_hash".=True
+    ]
+data Decode = Decode {
+      payee :: Text
+    , amount_msat :: Msat
+    , payment_hash :: Text
+    } deriving (Generic)
+instance FromJSON Decode
