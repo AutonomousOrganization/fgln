@@ -28,7 +28,10 @@ import GHC.Generics
 import Control.Monad.Reader 
 import Control.Applicative (liftA2) 
 import Data.Foldable 
+import Data.List
+import Data.Function
 import qualified Data.Map as M
+import Control.Concurrent
 import Data.Text.Format.Numbers
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.Query.Dominators (dom,iDom)
@@ -100,10 +103,11 @@ app (Just i, "route", v) =
         g <- get
         case valid g n m of
             Just (n', m') -> do 
-                r <- pure . (`runReader` (g, n', m')) $ do 
+                rou <- pure . (`runReader` (g, n', m')) $ do 
                     xrefs <- search $ getXresults x
                     ihops <- mapM getHops xrefs
                     mapM (getRoute a) ihops
+                r <- pure . sortBy cheapest $ rou
                 respond (object ["routes" .= r ]) i 
             _ -> respond (object ["invalid nodid" .= True]) i 
 
@@ -116,12 +120,13 @@ app (Just i, "payer", v) =
         n <- getNodeId
         g <- get
         rx <- pure . (`runReader` (g, getNodeInt n, getNodeInt d)) $ do 
-                    xrefs <- search $ getXresults 111
+                    xrefs <- search $ getXresults 11111
                     ihops <- mapM getHops xrefs
-                    rou <- mapM (getRoute a) ihops
-                    pure . filter (isCheap a) $ rou
-        r2 <- sendPays h rx []
-        respond (object ["resu" .= r2 ]) i 
+                    mapM (getRoute a) ihops
+        pou <- filterM (isAvail a) rx
+        r2 <- pure . sortBy cheapest . filter (isCheap a) $ pou
+        r3 <- sendPays h (take 11 r2) []
+        respond (object ["resu" .= r3 ]) i 
 
 app (Just i, "network", _) = do 
     g <- get
@@ -153,8 +158,14 @@ valid g n m = case (n , m) of
 
 isCheap a (r :<| _) = 
     let cost = __amount_msat r - a 
-    in cost < 1000000 
+    in cost < 5000000 
 
+cheapest (r :<| _) (r' :<| _) = on compare __amount_msat r r' 
+
+isAvail a (r :<| _) = do
+    a' <- checkAvailable r    
+    pure $ a' > a
+    
 -- sendPays :: _ 
 sendPays _ [] re = pure re
 sendPays h (r:rx) re = do 
@@ -163,17 +174,51 @@ sendPays h (r:rx) re = do
               "route" .= r
             , "payment_hash" .= h
             ])
+    liftIO $ threadDelay 100000
     Just wsp <- lightningCliDebug prin $ Command "waitsendpay" Nothing (object [
           "payment_hash" .= h
-        , "timeout" .= (11 :: Int) 
+        , "timeout" .= (21 :: Int) 
         ])
     case wsp of 
         Res v _ -> pure (v:re)
         ErrRes g@(T.take 4 -> "fail") _ -> do 
             liftIO $ prin "view pattern success, should try next?"
             sendPays h rx ((object ["err".=g]):re)
+        ErrRes g@(T.take 5 -> "Never") _ -> do 
+            liftIO $ prin "view pattern two! should try next?"
+            sendPays h rx ((object ["err".=g]):re)
         o -> liftIO (prin "did not view pattern") >> pure ((object ["o" .= o]):re) 
         
+
+
+-- checkAvailable :: Text -> Text -> _ Msat
+checkAvailable r =
+  let n = __id r
+      s = (channel::Route->Text) r
+  in do 
+    Just (Res (fromJSON -> Success (Avail px)) _)
+        <- lightningCliDebug prin $ Command "listpeerchannels" peerFilt (object ["id".=n]) 
+    case filter ((== s).psci) px of 
+        (PeerA _ a True) : _ -> pure a
+        _ -> pure 0
+        
+data Avail = Avail {channels :: [PeerA]} deriving (Generic)
+data PeerA = PeerA {
+      short_channel_id :: Text
+    , spendable_msat :: Msat
+    , peer_connected :: Bool
+    } deriving (Generic )
+instance FromJSON Avail
+instance FromJSON PeerA
+psci :: PeerA -> Text
+psci = short_channel_id
+
+peerFilt = Just $ object [
+    "channels" .= [object [
+          "short_channel_id".=True
+        , "spendable_msat".=True    
+        , "peer_connected".=True
+        ]]]
 
 getNodeId = do 
     Just (Res (Object ((parse (.: "id")) -> ((Success nodeid)::Result Text) )) _) <- 
