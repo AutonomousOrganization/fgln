@@ -13,8 +13,8 @@ module Lightning.Candidates where
 
 import Lightning.Graph
 import Lightning.Search
-import Data.Lightning
-import Data.Lightning.Generic
+import Lightning.Util
+import Lightning.Generic
 import Data.Graph.Inductive.Graph
 import qualified Data.Graph.Inductive.Query.BFS as B
 import Control.Applicative (liftA2) 

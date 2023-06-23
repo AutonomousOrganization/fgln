@@ -10,10 +10,8 @@
 
 module Lightning.Graph (Gra, Cxt, Vertex(..), Hop(..), Fee (..), createGraph, getNodeInt) where 
 
-import Control.Plugin (InitMonad) 
-import Control.Client
-import Data.Lightning
-import Data.Lightning.Generic
+import Lightning.Util
+import Lightning.Generic 
 import Data.Aeson
 import Numeric 
 import Data.Char
@@ -23,6 +21,7 @@ import Control.Applicative (liftA2)
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.PatriciaTree
 import Fmt
+import Control.Monad.IO.Class
 
 type Gra = Gr Vertex Hop
 type Cxt = Context Vertex Hop
@@ -51,13 +50,15 @@ data Fee = Fee {
 instance FromJSON Fee
 instance ToJSON Fee where 
     toJSON (Fee b p)= toJSON $ ( "(" +| build b +| "," +| build p +| ") " :: Text ) 
-createGraph :: InitMonad Gra
-createGraph = do 
-    Just (Res xn _) <- listnodes
-    Just (Res xc _) <- listchannels
+
+-- createGraph :: InitMonad Gra
+createGraph cli = do 
+    xn <- liftIO $ cli "listnodes" Nothing nfilt
+    xc <- liftIO $ cli "listchannels" Nothing cfilt
     case (fromJSON xn, fromJSON xc) :: (Result Nodes, Result Chans) of
         (Success nx, Success cx) -> pure $ mkGraph 
-            (map toLNode (_nodes nx)) (map toLEdge' (channels cx))     
+            (map toLNode (_nodes nx)) 
+            (map toLEdge' (channels cx))     
         _ -> pure empty
         where 
               toLNode :: Vertex -> (Node, Vertex)
@@ -69,10 +70,8 @@ createGraph = do
                     , (getNodeInt. __destination) c
                     , toHop c
                     )
-              listnodes = lightningCli (Command "listnodes" (Just nfilt) (object []))
-              listchannels = lightningCli (Command "listchannels" (Just cfilt) (object []))
-              nfilt = object ["nodes" .= [object ["nodeid" .= True] ] ]
-              cfilt = object ["channels" .= [object [
+              nfilt = Just $ object ["nodes" .= [object ["nodeid" .= True] ] ]
+              cfilt = Just $ object ["channels" .= [object [
                     "source" .= True
                   , "destination" .= True
                   , "short_channel_id" .= True

@@ -36,7 +36,9 @@ packages:
 # forks / in-progress versions pinned to a git hash. For example:
 #
 extra-deps:
-- clplug-0.4.0.0
+  
+- git: https://github.com/autonomousorganization/plug5.git
+  commit: 4695cac2f27e52e978639253bc71fd8d6f6071b2
 
 # extra-deps:
 # - acme-missiles-0.3

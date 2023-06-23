@@ -1,9 +1,8 @@
 
 module Lightning.Fees where
 
-import Control.Plugin
 import Lightning.Graph
-import Data.Lightning
+
 import Data.Graph.Inductive.Graph
 
 

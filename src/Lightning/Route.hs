@@ -8,7 +8,7 @@
 
 module Lightning.Route where 
 
-import Data.Lightning 
+import Lightning.Util
 import Data.Graph.Inductive.Graph
 import Data.Functor.Identity
 import Numeric (readHex) 

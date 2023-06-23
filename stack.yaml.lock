@@ -5,12 +5,16 @@
 
 packages:
 - completed:
-    hackage: clplug-0.4.0.0@sha256:9343bd3c8610a1566509db4373d3f31b771c62a4a032c9c526f2f60e28029e17,2234
+    commit: 4695cac2f27e52e978639253bc71fd8d6f6071b2
+    git: https://github.com/autonomousorganization/plug5.git
+    name: clplug
     pantry-tree:
-      sha256: aaac7aa88f55f5b8ce5275c5898b7f56767d12fc6e1dca42e56d54dff0f738ed
-      size: 909
+      sha256: a0f5c4a57743ea3186cc23d87335869fdfb79f86ff8b99f131a891607f4eef2b
+      size: 818
+    version: 0.5.0.1
   original:
-    hackage: clplug-0.4.0.0
+    commit: 4695cac2f27e52e978639253bc71fd8d6f6071b2
+    git: https://github.com/autonomousorganization/plug5.git
 snapshots:
 - completed:
     sha256: b37c0abab16c7de352c45b85f8ecc8530b084209a2c42987a96c92b4a5e3cd65

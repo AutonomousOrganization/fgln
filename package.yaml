@@ -21,6 +21,14 @@ dependencies:
 - mtl
 - format-numbers
 - fmt 
+- json-rpc
+- monomer
+- beam-core
+- beam-sqlite
+- beam-migrate
+- sqlite-simple
+- text-show
+- data-default
 
 ghc-options:
 - -Wall

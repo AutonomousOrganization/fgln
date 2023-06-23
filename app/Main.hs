@@ -7,6 +7,7 @@
     , ViewPatterns
     , ScopedTypeVariables
     , FlexibleContexts
+    , BlockArguments
     #-}
 
 module Main where 
@@ -21,8 +22,6 @@ import Control.Lens hiding ((.=))
 import Control.Monad.IO.Class
 import Data.Text (Text)
 import qualified Data.Text as T
-import Data.Lightning 
-import Control.Client 
 import Control.Monad.State
 import GHC.Generics
 import Control.Monad.Reader 
@@ -37,21 +36,31 @@ import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.Query.Dominators (dom,iDom)
 import Data.Sequence (Seq(..),(<|),(|>),(><)) 
 import qualified Data.Graph.Inductive.Query.BFS as B
-import Control.Plugin
-import Data.Lightning 
-import Control.Client
-import Data.Lightning.Generic
+import Lightning.Plugin
+import Lightning.Generic
 import Lightning.Route 
 import Lightning.Search 
 import Lightning.Graph 
 import Lightning.Candidates
 import Lightning.Fees
+import Lightning.Util
+import Lightning.Manifest
+import Network.JSONRPC
 import Fmt
+import BatchDb
+import TextShow
+import BatchUI
 
---prin m = appendFile "/home/o/.ao/storm" $ m <> " \n" 
--- lcli = lightningCliDebug prin
+main = do 
+    (init', (cli :: Cli) ) <- plugInit manifest
+    conn <- getDb init' "batches"
+    _ <- forkIO $ startMonomer conn 
+    g <- createGraph cli
+    plugRun . (`runReaderT` conn) . (`evalStateT` g) $ do 
+        Just req <- lift . lift $ receiveRequest 
+        app cli req
 
-main = plugin manifest start app
+respond j i = lift . lift . sendResponse $ Response V2 j i
 
 manifest = object [
       "dynamic" .= True
@@ -63,38 +72,11 @@ manifest = object [
        , RpcMethod "deploy" "x" "" Nothing False 
        , RpcMethod "payer" "x" "" Nothing False 
        ]
-    -- , "subscriptions" .= (["forward_event"] :: [Text] ) 
+    , "subscriptions" .= (["forward_event"] :: [Text] ) 
     ]
 
-start :: InitMonad Gra
-start = createGraph
-
---app (Nothing, "forward_event", 
-   -- fromJSON -> Success fe@(ForwardEvent{status = "settled", ..})) = do
-       -- re <- setNewFee fe
-
-app (Just i, "candidates", v) = do 
-    nodeid <- getNodeId
-    let n = getNodeInt $ maybe nodeid id $ v ^? nth 0 . _String 
-    let x = maybe 100000000 fromInteger $ v ^? nth 1 . _Integer
-    g <- get
-    respond (toJSON $ evalState collectD (suggest g n, x, [])) i 
-
-app (Just i, "deploy", v) = 
-    let x = maybe 0 fromInteger $ v ^? nth 0 . _Integer
-    in do 
-        g <- get
-        nodeid <- getNodeId
-        let lazyD = suggest g (getNodeInt nodeid)    
-        let dest = evalState collectD (lazyD, x, []) 
-        Just (Res v _) <- lightningCliDebug prin $ Command "multifundchannel" Nothing (object [
-                  "destinations" .= dest
-                , "feerate" .= ("slow" :: Text)
-                , "minchannels" .= (3 * div (length dest) 4)
-                ])
-        respond v i 
-
-app (Just i, "route", v) =
+-- app :: Cli -> Request -> _
+app cli (Request V2 "route" v i) =
     let n = getNodeInt <$> v ^? nth 0 . _String
         m = getNodeInt <$> v ^? nth 1 . _String 
         a = maybe 100000000 fromInteger $ v ^? nth 2 . _Integer
@@ -110,27 +92,16 @@ app (Just i, "route", v) =
                 r <- pure . sortBy cheapest $ rou
                 respond (object ["routes" .= r ]) i 
             _ -> respond (object ["invalid nodid" .= True]) i 
-
-
-app (Just i, "payer", v) = 
-    let bolt = maybe "" id $ v ^? nth 0 . _String
-    in do 
-        Just (Res (fromJSON -> Success (Decode d a h)) _)
-            <- lightningCli $ Command "decodepay" decodeFilter (object ["bolt11".=bolt])
-        n <- getNodeId
-        g <- get
-        rx <- pure . (`runReader` (g, getNodeInt n, getNodeInt d)) $ do 
-                    xrefs <- search $ getXresults 11111
-                    ihops <- mapM getHops xrefs
-                    mapM (getRoute a) ihops
-        pou <- filterM (isAvail a) rx
-        r2 <- pure . sortBy cheapest . filter (isCheap a) $ pou
-        r3 <- sendPays h (take 11 r2) []
-        respond (object ["resu" .= r3 ]) i 
-
-app (Just i, "network", _) = do 
+-- 
+app cli (Request V2 "candidates" v i) = do 
+    nodeid <- liftIO $ getNodeId cli
+    let n = getNodeInt $ maybe nodeid id $ v ^? nth 0 . _String 
+    let x = maybe 100000000 fromInteger $ v ^? nth 1 . _Integer
     g <- get
-    nodeid <- getNodeId
+    respond (toJSON $ evalState collectD (suggest g n, x, [])) i 
+app cli (Request V2 "network" _ i) = do 
+    g <- get
+    nodeid <- getNodeId cli
     respond (object [
           "nodes" .= order g
         , "edges" .= size g
@@ -143,8 +114,44 @@ app (Just i, "network", _) = do
                 Nothing -> M.insert i (1, [inFee g n], [outFee g n]) m 
               total ctx t = t + (sum . map (msats.snd) . lsuc' $ ctx) 
               addNode g' n' (i', f', f'') = (i'+1, inFee g' n' : f', outFee g' n' : f'')
-app (Just i, _, _) = release i
-app _ = pure () 
+-- --app (Nothing, "forward_event", 
+--    -- fromJSON -> Success fe@(ForwardEvent{status = "settled", ..})) = do
+--        -- re <- setNewFee fe
+-- 
+-- app cli (Request V2 "deploy" v i) = 
+--     let x = maybe 0 fromInteger $ v ^? nth 0 . _Integer
+--     in do 
+--         g <- get'
+--         nodeid <- getNodeId cli 
+--         let lazyD = suggest g (getNodeInt nodeid)    
+--         let dest = evalState collectD (lazyD, x, []) 
+--         v <- liftIO $ cli "multifundchannel" (Just $ object [
+--                   "destinations" .= dest
+--                 , "feerate" .= ("slow" :: Text)
+--                 , "minchannels" .= (3 * div (length dest) 4)
+--                 ]) Nothing 
+--         respond v i 
+-- 
+
+
+-- app cli (Request V2 "payer" v i) = 
+--     let bolt = maybe "" id $ v ^? nth 0 . _String
+--     in do 
+--         (fromJSON -> Success (Decode d a h))
+--             <- liftIO $ cli  "decodepay" (Just $ object ["bolt11".=bolt]) decodeFilter
+--         n <- getNodeId cli 
+--         g <- get
+--         rx <- pure . (`runReader` (g, getNodeInt n, getNodeInt d)) $ do 
+--                     xrefs <- search $ getXresults 11111
+--                     ihops <- mapM getHops xrefs
+--                     mapM (getRoute a) ihops
+--         pou <- filterM (isAvail cli a) rx
+--         r2 <- pure . sortBy cheapest . filter (isCheap a) $ pou
+--         r3 <- sendPays cli h (take 11 r2) []
+--         respond (object ["resu" .= r3 ]) i 
+
+            
+app _ _ = pure () 
 
 lvlPrint :: (Int, [Fee], [Fee]) -> Value
 lvlPrint (i, f', f'') = object ["nodes".=i, "inFee".= (avgFee id f'), "outFee".= (avgFee id f'')]
@@ -162,42 +169,43 @@ isCheap a (r :<| _) =
 
 cheapest (r :<| _) (r' :<| _) = on compare __amount_msat r r' 
 
-isAvail a (r :<| _) = do
-    a' <- checkAvailable r    
+isAvail cli a (r :<| _) = do
+    a' <- checkAvailable cli r    
     pure $ a' > a
     
--- sendPays :: _ 
-sendPays _ [] re = pure re
-sendPays h (r:rx) re = do 
-    liftIO $ prin "sendPays go"
-    lightningCliDebug prin $ Command "sendpay" Nothing (object [
-              "route" .= r
-            , "payment_hash" .= h
-            ])
-    liftIO $ threadDelay 100000
-    Just wsp <- lightningCliDebug prin $ Command "waitsendpay" Nothing (object [
-          "payment_hash" .= h
-        , "timeout" .= (21 :: Int) 
-        ])
-    case wsp of 
-        Res v _ -> pure (v:re)
-        ErrRes g@(T.take 4 -> "fail") _ -> do 
-            liftIO $ prin "view pattern success, should try next?"
-            sendPays h rx ((object ["err".=g]):re)
-        ErrRes g@(T.take 5 -> "Never") _ -> do 
-            liftIO $ prin "view pattern two! should try next?"
-            sendPays h rx ((object ["err".=g]):re)
-        o -> liftIO (prin "did not view pattern") >> pure ((object ["o" .= o]):re) 
+-- sendPays :: Cli -> Text -> [xxx[Route]] -> [[Route]] 
+-- sendPays _ _ [] re = pure re
+-- sendPays cli h (r:rx) re = do 
+--     liftIO $ prin "sendPays go"
+--     liftIO $ cli "sendpay" (Just $ object [
+--               "route" .= r
+--             , "payment_hash" .= h
+--             ]) Nothing
+--     liftIO $ threadDelay 100000
+--     wsp <- liftIO $ cli "waitsendpay" (Just $ object [
+--           "payment_hash" .= h
+--         , "timeout" .= (21 :: Int) 
+--         ]) Nothing
+--     liftIO $ prin wsp
+    -- case wsp of 
+    --     Res v _ -> pure (v:re)
+    --     ErrRes g@(T.take 4 -> "fail") _ -> do 
+    --         liftIO $ prin "view pattern success, should try next?"
+    --         sendPays h rx ((object ["err".=g]):re)
+    --     ErrRes g@(T.take 5 -> "Never") _ -> do 
+    --         liftIO $ prin "view pattern two! should try next?"
+    --         sendPays h rx ((object ["err".=g]):re)
+    --     o -> liftIO (prin "did not view pattern") >> pure ((object ["o" .= o]):re) 
         
 
 
 -- checkAvailable :: Text -> Text -> _ Msat
-checkAvailable r =
+checkAvailable cli r =
   let n = __id r
       s = (channel::Route->Text) r
   in do 
-    Just (Res (fromJSON -> Success (Avail px)) _)
-        <- lightningCliDebug prin $ Command "listpeerchannels" peerFilt (object ["id".=n]) 
+    (fromJSON -> Success (Avail px)) 
+        <- liftIO $ cli "listpeerchannels" (Just $ object ["id".=n]) peerFilt  
     case filter ((== s).psci) px of 
         (PeerA _ a True) : _ -> pure a
         _ -> pure 0
@@ -207,7 +215,7 @@ data PeerA = PeerA {
       short_channel_id :: Text
     , spendable_msat :: Msat
     , peer_connected :: Bool
-    } deriving (Generic )
+    } deriving (Generic ) 
 instance FromJSON Avail
 instance FromJSON PeerA
 psci :: PeerA -> Text
@@ -220,9 +228,9 @@ peerFilt = Just $ object [
         , "peer_connected".=True
         ]]]
 
-getNodeId = do 
-    Just (Res (Object ((parse (.: "id")) -> ((Success nodeid)::Result Text) )) _) <- 
-            lightningCli $ Command "getinfo" Nothing (object []) 
+getNodeId cli = do 
+    (Object ((parse (.: "id")) -> ((Success nodeid)::Result Text) )) <- 
+            liftIO $ cli "getinfo" Nothing (Just $ object ["id".=True]) 
     pure nodeid
 
 

@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.35.1.
+-- This file has been generated from package.yaml by hpack version 0.35.2.
 --
 -- see: https://github.com/sol/hpack
 
@@ -22,6 +22,8 @@ source-repository head
 
 library
   exposed-modules:
+      BatchDb
+      BatchUI
       Lightning.Candidates
       Lightning.Fees
       Lightning.Graph
@@ -35,15 +37,23 @@ library
   build-depends:
       aeson
     , base >=4.7 && <5
+    , beam-core
+    , beam-migrate
+    , beam-sqlite
     , clplug
     , containers
+    , data-default
     , fgl
     , fmt
     , format-numbers
+    , json-rpc
     , lens
     , lens-aeson
+    , monomer
     , mtl
+    , sqlite-simple
     , text
+    , text-show
   default-language: Haskell2010
 
 executable fgln
@@ -56,16 +66,24 @@ executable fgln
   build-depends:
       aeson
     , base >=4.7 && <5
+    , beam-core
+    , beam-migrate
+    , beam-sqlite
     , clplug
     , containers
+    , data-default
     , fgl
     , fgln
     , fmt
     , format-numbers
+    , json-rpc
     , lens
     , lens-aeson
+    , monomer
     , mtl
+    , sqlite-simple
     , text
+    , text-show
   default-language: Haskell2010
 
 test-suite routes-test
@@ -79,14 +97,22 @@ test-suite routes-test
   build-depends:
       aeson
     , base >=4.7 && <5
+    , beam-core
+    , beam-migrate
+    , beam-sqlite
     , clplug
     , containers
+    , data-default
     , fgl
     , fgln
     , fmt
     , format-numbers
+    , json-rpc
     , lens
     , lens-aeson
+    , monomer
     , mtl
+    , sqlite-simple
     , text
+    , text-show
   default-language: Haskell2010
