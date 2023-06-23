@@ -30,8 +30,8 @@ data BatchDb f = BatchDb
   deriving (Generic, Database Sqlite)
 
 data BatchT f = Batch
-  { _nodeId  :: Columnar f Int64
-  , _amount  :: Columnar f (Maybe Int64)
+  { _nodeId  :: Columnar f Text
+  , _amount  :: Columnar f (Maybe Int32)
   , _avoid   :: Columnar f Bool
   }
   deriving (Generic, Beamable)
@@ -40,7 +40,7 @@ type Batch = BatchT Identity
 type BatchId = PrimaryKey BatchT Identity
 
 instance Table BatchT where
-  data PrimaryKey BatchT f = BatchId (Columnar f Int64) deriving (Generic, Beamable)
+  data PrimaryKey BatchT f = BatchId (Columnar f Text) deriving (Generic, Beamable)
   primaryKey = BatchId . _nodeId
 
 instance ToJSON (BatchT Identity)
@@ -71,7 +71,7 @@ insertBatch :: Connection -> Batch -> IO ()
 insertBatch conn batch = runBeamSqlite conn $
   runInsert $ insert (_batches createBatchDb) $ insertValues [batch]
 
-lookupBatch :: Connection -> Int64 -> IO [Batch]
+lookupBatch :: Connection -> Text -> IO [Batch]
 lookupBatch conn nodeId = runBeamSqlite conn $
   runSelectReturningList $
   lookup_ (_batches createBatchDb) (BatchId nodeId)
@@ -80,7 +80,7 @@ lookupBatches :: Connection -> IO [Batch]
 lookupBatches conn = runBeamSqlite conn $
   runSelectReturningList . select $ all_ (_batches createBatchDb)
 
-updateBatchAmount :: Connection -> Batch -> Maybe Int64 -> IO ()
+updateBatchAmount :: Connection -> Batch -> Maybe Int32 -> IO ()
 updateBatchAmount conn batch newAmount = runBeamSqlite conn $
   runUpdate $ save (_batches createBatchDb) (batch { _amount = newAmount })
 
@@ -88,6 +88,6 @@ updateBatchAvoid :: Connection -> Batch -> Bool -> IO ()
 updateBatchAvoid conn batch newAvoid = runBeamSqlite conn $
   runUpdate $ save (_batches createBatchDb) (batch { _avoid = newAvoid })
 
-deleteBatch :: Connection -> Int64 -> IO ()
+deleteBatch :: Connection -> Text -> IO ()
 deleteBatch conn nodeId = runBeamSqlite conn $
   runDelete $ delete (_batches createBatchDb) (\b -> _nodeId b ==. val_ nodeId)

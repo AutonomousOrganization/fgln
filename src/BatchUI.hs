@@ -1,5 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE FlexibleContexts #-}
 module BatchUI where
 
 
@@ -31,9 +34,17 @@ data AppEvent
 
 makeLenses 'AppModel
 
+todoRow wenv model idx ba = hstack [
+        label (_nodeId ba)
+      , case _amount ba of 
+        Just a -> label $ showt  a
+        _ -> label "" 
+      , label $ showt (_avoid ba)   -- (_nodeId ba)
+    ]
 buildUI wenv model = vstack [
     label "Hello world",
     spacer,
+    vstack $ zipWith (todoRow wenv model) [0..] (model ^. batch),
     hstack [
       label $ "Click count: " <> showt (model ^. clickCount),
       button "+++" AppIncrease

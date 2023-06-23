@@ -66,10 +66,16 @@ manifest = object [
       "dynamic" .= True
     , "options" .= ([] :: [Option])
     , "rpcmethods" .= [
+        -- explore graph
          RpcMethod "route" "n m [a, l]" "l routes from n to m of a" Nothing False 
        , RpcMethod "network" "" "show metrics of loaded graph" Nothing False 
+       -- deploy batch  
        , RpcMethod "candidates" "n [l]" "" Nothing False
        , RpcMethod "deploy" "x" "" Nothing False 
+       , RpcMethod "skip" "n" "" Nothing False
+       , RpcMethod "choose" "n [a]" "" Nothing False 
+
+       -- try to sendpay (*** always fails)
        , RpcMethod "payer" "x" "" Nothing False 
        ]
     , "subscriptions" .= (["forward_event"] :: [Text] ) 
@@ -77,13 +83,17 @@ manifest = object [
 
 -- app :: Cli -> Request -> _
 app cli (Request V2 "route" v i) =
-    let n = getNodeInt <$> v ^? nth 0 . _String
-        m = getNodeInt <$> v ^? nth 1 . _String 
+    let n = v ^? nth 0 . _String
+        m = v ^? nth 1 . _String 
         a = maybe 100000000 fromInteger $ v ^? nth 2 . _Integer
         x = maybe 1 fromInteger $ v ^? nth 3 . _Integer
     in do
+        conn <- ask
+        liftIO $ case n of 
+            Just n' -> insertBatch conn $ Batch n' Nothing False
+            _ -> pure () 
         g <- get
-        case valid g n m of
+        case valid g (getNodeInt <$> n) (getNodeInt <$> m) of
             Just (n', m') -> do 
                 rou <- pure . (`runReader` (g, n', m')) $ do 
                     xrefs <- search $ getXresults x
