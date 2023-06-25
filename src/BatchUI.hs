@@ -14,6 +14,7 @@ import Database.SQLite.Simple
 import BatchDb
 
 import Monomer
+import qualified Monomer.Lens as L
 import Control.Lens
 import Data.Maybe
 import Data.Text (Text)
@@ -21,7 +22,6 @@ import Monomer
 import TextShow
 import BatchDb
 
-import qualified Monomer.Lens as L
 
 
 data AppModel = AppModel {
@@ -35,16 +35,19 @@ data AppEvent
 makeLenses 'AppModel
 
 todoRow wenv model idx ba = hstack [
-        label (_nodeId ba)
+        spacer
+      , label (_nodeId ba)
       , case _amount ba of 
         Just a -> label $ showt  a
         _ -> label "" 
       , label $ showt (_avoid ba)   -- (_nodeId ba)
     ]
+
 buildUI wenv model = vstack [
     label "Hello world",
     spacer,
     vstack $ zipWith (todoRow wenv model) [0..] (model ^. batch),
+    spacer,
     hstack [
       label $ "Click count: " <> showt (model ^. clickCount),
       button "+++" AppIncrease
@@ -70,6 +73,7 @@ startMonomer conn = do
         appWindowTitle "fgln"
       , appTheme darkTheme
       , appInitEvent AppInit
+      , appRenderOnMainThread
       , appFontDef "Regular" "/home/o/o/Code/monomer-starter/assets/fonts/Roboto-Regular.ttf"
       ]
 

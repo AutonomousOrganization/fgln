@@ -9,6 +9,11 @@ extra-source-files:
 
 description: Lightning plugin that loads channels into graph object and provides functionality to search channel graph and manage node.
 
+default-extensions: 
+- OverloadedStrings
+- LambdaCase
+- ViewPatterns
+
 dependencies:
 - base >= 4.7 && < 5
 - clplug

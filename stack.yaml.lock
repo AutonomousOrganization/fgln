@@ -5,6 +5,41 @@
 
 packages:
 - completed:
+    hackage: monomer-1.5.1.0@sha256:18e3ce60c7f5d3fae74bf5ace7515f0e252b12ccc4b71030f948e6fdc1f49a99,16741
+    pantry-tree:
+      sha256: 3dde2b635d1298c3b734c0b28bae8fa4956bc2ad9ef89f81bbb04ec1eeb09d0c
+      size: 14513
+  original:
+    hackage: monomer-1.5.1.0
+- completed:
+    hackage: beam-core-0.10.0.0@sha256:bd432a6f0f1f580fb24067ff674ec96128db59028ac4f1bf457d0d664deaddc9,5284
+    pantry-tree:
+      sha256: 642cceae9bf668e3d988498bd4a1540acc4a1833354408ba7dd3446f82e68aa3
+      size: 2705
+  original:
+    hackage: beam-core-0.10.0.0
+- completed:
+    hackage: beam-migrate-0.5.2.0@sha256:788e3e36b55d3d25e9a1139f7e6054ab62def60d52b9707567df192733e63900,4924
+    pantry-tree:
+      sha256: af0d001c74bfdb08dc15a7e783bad7721843b6e8bfbcd16cc6414d090000d60b
+      size: 1721
+  original:
+    hackage: beam-migrate-0.5.2.0
+- completed:
+    hackage: beam-sqlite-0.5.2.0@sha256:8513ce01093c2236784627317a469329464243cedb778646536e81b73628102a,3671
+    pantry-tree:
+      sha256: 9609729fbea47af25706b78e1584556c4c983d13e74e7d0fd020c256ef247aab
+      size: 988
+  original:
+    hackage: beam-sqlite-0.5.2.0
+- completed:
+    hackage: vector-sized-1.5.0@sha256:f0c6f8c46ff52bd46151e667c4c430448a4e6e0cc10e20227c59c2e6d0420878,1835
+    pantry-tree:
+      sha256: 803002983efe3e354553b6bc1d4c06ae8b667253df4472fa603a012b3c9c896c
+      size: 1302
+  original:
+    hackage: vector-sized-1.5.0
+- completed:
     commit: 4695cac2f27e52e978639253bc71fd8d6f6071b2
     git: https://github.com/autonomousorganization/plug5.git
     name: clplug
@@ -17,8 +52,7 @@ packages:
     git: https://github.com/autonomousorganization/plug5.git
 snapshots:
 - completed:
-    sha256: b37c0abab16c7de352c45b85f8ecc8530b084209a2c42987a96c92b4a5e3cd65
-    size: 648924
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/20/13.yaml
-  original:
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/20/13.yaml
+    sha256: 1867d84255dff8c87373f5dd03e5a5cb1c10a99587e26c8793e750c54e83ffdc
+    size: 639139
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/21/0.yaml
+  original: lts-21.0

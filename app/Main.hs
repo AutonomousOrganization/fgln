@@ -46,19 +46,20 @@ import Lightning.Fees
 import Lightning.Util
 import Lightning.Manifest
 import Network.JSONRPC
+import Control.Exception
 import Fmt
 import BatchDb
 import TextShow
 import BatchUI
 
 main = do 
-    (init', (cli :: Cli) ) <- plugInit manifest
+    (init', (cli' :: Cli) ) <- plugInit manifest
     conn <- getDb init' "batches"
     _ <- forkIO $ startMonomer conn 
-    g <- createGraph cli
+    g <- createGraph cli'
     plugRun . (`runReaderT` conn) . (`evalStateT` g) $ do 
         Just req <- lift . lift $ receiveRequest 
-        app cli req
+        app cli' req
 
 respond j i = lift . lift . sendResponse $ Response V2 j i
 
@@ -212,7 +213,7 @@ isAvail cli a (r :<| _) = do
 -- checkAvailable :: Text -> Text -> _ Msat
 checkAvailable cli r =
   let n = __id r
-      s = (channel::Route->Text) r
+      s = Lightning.Route.channel r
   in do 
     (fromJSON -> Success (Avail px)) 
         <- liftIO $ cli "listpeerchannels" (Just $ object ["id".=n]) peerFilt  

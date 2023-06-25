@@ -30,7 +30,7 @@ import Control.Exception
 data Route = Route {
       __id :: Text 
     , channel :: Text 
-    , direction :: Int
+    , __direction :: Int
     , __amount_msat :: Msat 
     , __delay :: Int 
     , style :: Text

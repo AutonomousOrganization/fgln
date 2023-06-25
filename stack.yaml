@@ -17,8 +17,8 @@
 #
 # resolver: ./custom-snapshot.yaml
 # resolver: https://example.com/snapshots/2018-01-01.yaml
-resolver:
-  url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/20/13.yaml
+resolver: lts-21.0
+  # url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/20/13.yaml
 
 # User packages to be built.
 # Various formats can be used as shown in the example below.
@@ -36,7 +36,11 @@ packages:
 # forks / in-progress versions pinned to a git hash. For example:
 #
 extra-deps:
-  
+- monomer-1.5.1.0
+- beam-core-0.10.0.0
+- beam-migrate-0.5.2.0
+- beam-sqlite-0.5.2.0
+- vector-sized-1.5.0
 - git: https://github.com/autonomousorganization/plug5.git
   commit: 4695cac2f27e52e978639253bc71fd8d6f6071b2
 
