@@ -42,7 +42,7 @@ extra-deps:
 - beam-sqlite-0.5.2.0
 - vector-sized-1.5.0
 - git: https://github.com/autonomousorganization/plug5.git
-  commit: 4695cac2f27e52e978639253bc71fd8d6f6071b2
+  commit: 136bd0821cda2a64a90455b7969a258461645c4c
 
 # extra-deps:
 # - acme-missiles-0.3

@@ -34,6 +34,7 @@ dependencies:
 - sqlite-simple
 - text-show
 - data-default
+- format-numbers
 
 ghc-options:
 - -Wall

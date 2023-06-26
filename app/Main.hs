@@ -53,9 +53,9 @@ import TextShow
 import BatchUI
 
 main = do 
-    (init', (cli' :: Cli) ) <- plugInit manifest
+    (init', cli') <- plugInit manifest
     conn <- getDb init' "batches"
-    _ <- forkIO $ startMonomer conn 
+    _ <- forkIO $ startMonomer conn cli' 
     g <- createGraph cli'
     plugRun . (`runReaderT` conn) . (`evalStateT` g) $ do 
         Just req <- lift . lift $ receiveRequest 
@@ -89,10 +89,7 @@ app cli (Request V2 "route" v i) =
         a = maybe 100000000 fromInteger $ v ^? nth 2 . _Integer
         x = maybe 1 fromInteger $ v ^? nth 3 . _Integer
     in do
-        conn <- ask
-        liftIO $ case n of 
-            Just n' -> insertBatch conn $ Batch n' Nothing False
-            _ -> pure () 
+        -- conn <- ask
         g <- get
         case valid g (getNodeInt <$> n) (getNodeInt <$> m) of
             Just (n', m') -> do 
@@ -109,7 +106,8 @@ app cli (Request V2 "candidates" v i) = do
     let n = getNodeInt $ maybe nodeid id $ v ^? nth 0 . _String 
     let x = maybe 100000000 fromInteger $ v ^? nth 1 . _Integer
     g <- get
-    respond (toJSON $ evalState collectD (suggest g n, x, [])) i 
+    let newDestins = evalState collectD (suggest g n, x, [])
+    respond (toJSON $ newDestins) i 
 app cli (Request V2 "network" _ i) = do 
     g <- get
     nodeid <- getNodeId cli

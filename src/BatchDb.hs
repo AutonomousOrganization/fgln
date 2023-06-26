@@ -31,8 +31,8 @@ data BatchDb f = BatchDb
 
 data BatchT f = Batch
   { _nodeId  :: Columnar f Text
-  , _amount  :: Columnar f (Maybe Int32)
-  , _avoid   :: Columnar f Bool
+  , _amount  :: Columnar f Int32
+  , _pick    :: Columnar f (Maybe Bool)
   }
   deriving (Generic, Beamable)
 
@@ -67,9 +67,9 @@ createDb conn = runBeamSqlite conn $ do
        VerificationFailed _ -> autoMigrate migrationBackend database
        VerificationSucceeded -> pure () 
 
-insertBatch :: Connection -> Batch -> IO ()
+insertBatch :: Connection -> [Batch] -> IO ()
 insertBatch conn batch = runBeamSqlite conn $
-  runInsert $ insert (_batches createBatchDb) $ insertValues [batch]
+  runInsert $ insert (_batches createBatchDb) $ insertValues batch
 
 lookupBatch :: Connection -> Text -> IO [Batch]
 lookupBatch conn nodeId = runBeamSqlite conn $
@@ -80,13 +80,13 @@ lookupBatches :: Connection -> IO [Batch]
 lookupBatches conn = runBeamSqlite conn $
   runSelectReturningList . select $ all_ (_batches createBatchDb)
 
-updateBatchAmount :: Connection -> Batch -> Maybe Int32 -> IO ()
-updateBatchAmount conn batch newAmount = runBeamSqlite conn $
-  runUpdate $ save (_batches createBatchDb) (batch { _amount = newAmount })
+-- updateBatchAmount :: Connection -> Batch -> Maybe Int32 -> IO ()
+-- updateBatchAmount conn batch newAmount = runBeamSqlite conn $
+--   runUpdate $ save (_batches createBatchDb) (batch { _amount = newAmount })
 
-updateBatchAvoid :: Connection -> Batch -> Bool -> IO ()
-updateBatchAvoid conn batch newAvoid = runBeamSqlite conn $
-  runUpdate $ save (_batches createBatchDb) (batch { _avoid = newAvoid })
+-- updateBatchAvoid :: Connection -> Batch -> Bool -> IO ()
+-- updateBatchAvoid conn batch newAvoid = runBeamSqlite conn $
+--   runUpdate $ save (_batches createBatchDb) (batch { _avoid = newAvoid })
 
 deleteBatch :: Connection -> Text -> IO ()
 deleteBatch conn nodeId = runBeamSqlite conn $
